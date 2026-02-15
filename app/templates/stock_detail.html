@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}{{ stock.name }} ({{ stock.code }}) - 股票分析系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1>{{ stock.name }} ({{ stock.code }})</h1>
+            <button class="btn btn-outline-primary" onclick="window.history.back()">返回</button>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">基本信息</div>
+                    <div class="card-body">
+                        <p><strong>行业分类:</strong> 
+                            {{ stock.industry.level1 or 'N/A' }}
+                            {% if stock.industry.level2 %} → {{ stock.industry.level2 }}{% endif %}
+                            {% if stock.industry.level3 %} → {{ stock.industry.level3 }}{% endif %}
+                        </p>
+                        <p><strong>最新价格:</strong> {{ "%.2f"|format(stock.price_data.close) if stock.price_data.close else 'N/A' }}</p>
+                        <p><strong>涨跌幅:</strong> 
+                            <span class="pct-change {% if stock.price_data.pct_change and stock.price_data.pct_change > 0 %}positive{% elif stock.price_data.pct_change and stock.price_data.pct_change < 0 %}negative{% endif %}">
+                                {{ "%.2f%%"|format(stock.price_data.pct_change) if stock.price_data.pct_change else 'N/A' }}
+                            </span>
+                        </p>
+                        <p><strong>交易日期:</strong> {{ stock.price_data.date }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">技术指标</div>
+                    <div class="card-body">
+                        <p><strong>MA5:</strong> {{ "%.2f"|format(stock.price_data.ma5) if stock.price_data.ma5 else 'N/A' }}</p>
+                        <p><strong>MA10:</strong> {{ "%.2f"|format(stock.price_data.ma10) if stock.price_data.ma10 else 'N/A' }}</p>
+                        <p><strong>MA20:</strong> {{ "%.2f"|format(stock.price_data.ma20) if stock.price_data.ma20 else 'N/A' }}</p>
+                        <p><strong>RSI6:</strong> {{ "%.2f"|format(stock.price_data.rsi6) if stock.price_data.rsi6 else 'N/A' }}</p>
+                        <p><strong>RSI14:</strong> {{ "%.2f"|format(stock.price_data.rsi14) if stock.price_data.rsi14 else 'N/A' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>K线图</span>
+                <div>
+                    <select id="period-select" class="form-select" style="width: auto; display: inline-block;">
+                        <option value="20">1个月</option>
+                        <option value="60">3个月</option>
+                        <option value="120" selected>6个月</option>
+                        <option value="240">1年</option>
+                        <option value="500">全部</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="kline-chart" class="kline-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Wait for DOM and ECharts to be fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if echarts is available, if not, wait a bit more
+    function waitForECharts(callback) {
+        if (typeof echarts !== 'undefined') {
+            callback();
+        } else {
+            setTimeout(() => waitForECharts(callback), 100);
+        }
+    }
+    
+    // 初始化K线图
+    function initKLineChart(klineData) {
+        const chart = echarts.init(document.getElementById('kline-chart'));
+        
+        // 准备数据
+        const dates = klineData.map(item => item.date);
+        const candlestickData = klineData.map(item => [item.open, item.close, item.low, item.high]);
+        const volumeData = klineData.map(item => item.volume);
+        const ma5Data = klineData.map(item => item.ma5);
+        const ma10Data = klineData.map(item => item.ma10);
+        const ma20Data = klineData.map(item => item.ma20);
+        
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'cross'
+                }
+            },
+            legend: {
+                data: ['MA5', 'MA10', 'MA20']
+            },
+            grid: [
+                { left: '10%', right: '10%', height: '60%' },
+                { left: '10%', right: '10%', top: '75%', height: '15%' }
+            ],
+            xAxis: [
+                {
+                    type: 'category',
+                    data: dates,
+                    scale: true,
+                    boundaryGap: false,
+                    axisLine: { onZero: false },
+                    splitLine: { show: false },
+                    min: 'dataMin',
+                    max: 'dataMax',
+                    axisPointer: {
+                        z: 100
+                    }
+                },
+                {
+                    type: 'category',
+                    gridIndex: 1,
+                    data: dates,
+                    scale: true,
+                    boundaryGap: false,
+                    axisLine: { onZero: false },
+                    axisTick: { show: false },
+                    splitLine: { show: false },
+                    axisLabel: { show: false }
+                }
+            ],
+            yAxis: [
+                {
+                    scale: true,
+                    splitArea: {
+                        show: true
+                    }
+                },
+                {
+                    gridIndex: 1,
+                    splitArea: { show: true }
+                }
+            ],
+            dataZoom: [
+                {
+                    type: 'inside',
+                    xAxisIndex: [0, 1],
+                    start: 0,
+                    end: 100
+                },
+                {
+                    show: true,
+                    xAxisIndex: [0, 1],
+                    type: 'slider',
+                    top: '85%',
+                    start: 0,
+                    end: 100
+                }
+            ],
+            series: [
+                {
+                    name: 'K线',
+                    type: 'candlestick',
+                    data: candlestickData,
+                    itemStyle: {
+                        color: '#ec0000',
+                        color0: '#00da3c',
+                        borderColor: '#ec0000',
+                        borderColor0: '#00da3c'
+                    }
+                },
+                {
+                    name: 'MA5',
+                    type: 'line',
+                    data: ma5Data,
+                    smooth: true,
+                    lineStyle: {
+                        width: 1
+                    }
+                },
+                {
+                    name: 'MA10',
+                    type: 'line',
+                    data: ma10Data,
+                    smooth: true,
+                    lineStyle: {
+                        width: 1
+                    }
+                },
+                {
+                    name: 'MA20',
+                    type: 'line',
+                    data: ma20Data,
+                    smooth: true,
+                    lineStyle: {
+                        width: 1
+                    }
+                },
+                {
+                    name: '成交量',
+                    type: 'bar',
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    data: volumeData
+                }
+            ]
+        };
+        
+        chart.setOption(option);
+        
+        // 响应式调整
+        window.addEventListener('resize', () => {
+            chart.resize();
+        });
+        
+        return chart;
+    }
+    
+    // Wait for ECharts to be ready then initialize
+    waitForECharts(function() {
+        // 加载K线数据
+        let currentKLineData = {{ kline_data|tojson }};
+        let currentChart = initKLineChart(currentKLineData);
+        
+        // 切换时间周期
+        document.getElementById('period-select').addEventListener('change', async function() {
+            const period = this.value;
+            const response = await fetch(`/api/stock/{{ stock.code }}?period=${period}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                currentKLineData = data.data.kline_data;
+                currentChart.dispose();
+                currentChart = initKLineChart(currentKLineData);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}行业列表 - 股票分析系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>行业列表</h1>
+        <p class="text-muted">共 {{ industries|length }} 个行业</p>
+        
+        <div class="row">
+            {% for industry in industries %}
+            <div class="col-md-4 col-lg-3 mb-3">
+                <div class="card industry-item" onclick="window.location.href='/industry/{{ industry.name }}'">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ industry.name }}</h5>
+                        <p class="card-text text-muted">{{ industry.stock_count }} 只股票</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

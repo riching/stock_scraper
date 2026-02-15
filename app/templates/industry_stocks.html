@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}{{ industry_name }} - 股票分析系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>{{ industry_name }}</h1>
+        <p class="text-muted">共 {{ pagination.total_count }} 只股票</p>
+        
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <select id="sort-select" class="form-select" style="width: auto; display: inline-block;">
+                    <option value="pct_change_desc">涨跌幅 ↓</option>
+                    <option value="pct_change_asc">涨跌幅 ↑</option>
+                    <option value="close_desc">价格 ↓</option>
+                    <option value="close_asc">价格 ↑</option>
+                </select>
+            </div>
+            <nav>
+                <ul class="pagination">
+                    {% if pagination.page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagination.page - 1 }}&page_size={{ pagination.page_size }}">上一页</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in range(1, pagination.total_pages + 1) %}
+                        {% if page_num == pagination.page %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% elif page_num >= pagination.page - 2 and page_num <= pagination.page + 2 %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_num }}&page_size={{ pagination.page_size }}">{{ page_num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pagination.page < pagination.total_pages %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagination.page + 1 }}&page_size={{ pagination.page_size }}">下一页</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>代码</th>
+                        <th>名称</th>
+                        <th>最新价</th>
+                        <th>涨跌幅</th>
+                        <th>二级行业</th>
+                        <th>三级行业</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in stocks %}
+                    <tr onclick="window.location.href='/stock/{{ stock.code }}'" style="cursor: pointer;">
+                        <td>{{ stock.code }}</td>
+                        <td>{{ stock.name }}</td>
+                        <td>{{ "%.2f"|format(stock.close) if stock.close else 'N/A' }}</td>
+                        <td class="pct-change {% if stock.pct_change and stock.pct_change > 0 %}positive{% elif stock.pct_change and stock.pct_change < 0 %}negative{% endif %}">
+                            {{ "%.2f%%"|format(stock.pct_change) if stock.pct_change else 'N/A' }}
+                        </td>
+                        <td>{{ stock.level2_industry or 'N/A' }}</td>
+                        <td>{{ stock.level3_industry or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <nav>
+            <ul class="pagination">
+                {% if pagination.page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ pagination.page - 1 }}&page_size={{ pagination.page_size }}">上一页</a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in range(1, pagination.total_pages + 1) %}
+                    {% if page_num == pagination.page %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                    {% elif page_num >= pagination.page - 2 and page_num <= pagination.page + 2 %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_num }}&page_size={{ pagination.page_size }}">{{ page_num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.page < pagination.total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ pagination.page + 1 }}&page_size={{ pagination.page_size }}">下一页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<script>
+document.getElementById('sort-select').addEventListener('change', function() {
+    const sortValue = this.value;
+    // 这里可以添加AJAX排序功能，或者重新加载页面
+    // 简化版本：重新加载页面并添加排序参数
+    const url = new URL(window.location);
+    url.searchParams.set('sort', sortValue);
+    window.location.href = url.toString();
+});
+</script>
+{% endblock %}
